@@ -37,9 +37,13 @@ i2c_master_dev_handle_t i2c_dev_hz(uint8_t addr, uint32_t hz)
     return h;
 }
 
+#ifndef I2C_BUS_HZ
+#define I2C_BUS_HZ 400000
+#endif
+
 i2c_master_dev_handle_t i2c_dev(uint8_t addr)
 {
-    return i2c_dev_hz(addr, 400000);
+    return i2c_dev_hz(addr, I2C_BUS_HZ);
 }
 
 int i2c_probe(uint8_t addr)

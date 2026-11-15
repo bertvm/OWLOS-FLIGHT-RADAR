@@ -10,12 +10,10 @@ The site keeps the firmware of each version: a new number here keeps the one bef
   repo root and the file was only in `firmware/`. Opening the repo builds the CrowPanel Advance 5.0
   for an ESP32-S3. `project()` stays in that root file, so the chip's toolchain is the one the build
   uses. ESP-IDF 6 names the panel's pixels as RGB565 instead of `bits_per_pixel`.
-- Fixed: on an Elecrow CrowPanel Advance 5.0 the backlight never came on. The board's own chip,
-  which switches it, did not answer. WiFi's start lets every pin float while the radio naps, and
-  that includes the two I2C pins and the microphone clock on GPIO 19, so the chip's answer was
-  lost. Those pins stay driven. The clock pin is tried left alone, held low, and held high; the
-  log names which one, if any, the chip answers on. The light is turned on once the picture is in
-  memory. If the chip is still silent, the board's switch needs to be on the microphone.
+- Fixed: the 5" on the bench is the plain CrowPanel (DIS07050H), the one the P2000 firmware
+  already runs, not the Advance. Its backlight is GPIO 2 held high. Its picture pins and its
+  touch (I2C on GPIO 19 and 20, a PCA9557 at 0x18) are that firmware's. Opening the folder builds
+  this board. The Advance stays `crowadv50`.
 - The radar can do without its panel: the three dots in the top right corner take it away and the scope
   moves to the middle of the screen. A picked plane brings the panel back while it is picked; the dots
   take it away again, and the plane with it. Tapped once more, they bring the panel back to stay. The

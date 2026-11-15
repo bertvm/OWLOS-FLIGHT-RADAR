@@ -3,11 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 # idf.py and the ESP-IDF extension build the folder you opened. The sources stay in
 # firmware/. project() has to be in this file: the chip's toolchain is chosen while it
 # runs, and an include() of firmware/CMakeLists.txt leaves the host compiler in place.
-# Opening the repo and setting the target to esp32s3 builds the Elecrow CrowPanel
-# Advance 5.0. Another screen is firmware/BUILD.BAT <name>, or -DRADAR_DISPLAY=N
-# (the numbers are in firmware/CMakeLists.txt).
+# Opening the repo and setting the target to esp32s3 builds the plain Elecrow
+# CrowPanel 5.0 (DIS07050H). The Advance is -DRADAR_DISPLAY=10, or
+# firmware/BUILD.BAT crowadv50. The numbers are in firmware/CMakeLists.txt.
 if(NOT DEFINED RADAR_DISPLAY)
-    set(RADAR_DISPLAY 10)
+    set(RADAR_DISPLAY 15)
 endif()
 
 # Build, with no chip chosen, would pick an ESP32. the 5" is an S3. a target passed in
@@ -52,7 +52,7 @@ endforeach()
 
 if(RADAR_DISPLAY EQUAL 7 OR RADAR_DISPLAY EQUAL 9)   # the S3 boards with an LCD
     set(SDKCONFIG_DEFAULTS "${_gen}/sdkconfig.defaults;${_gen}/sdkconfig.defaults.s3lcd")
-elseif(RADAR_DISPLAY EQUAL 10 OR RADAR_DISPLAY EQUAL 11 OR RADAR_DISPLAY EQUAL 13 OR RADAR_DISPLAY EQUAL 14)
+elseif(RADAR_DISPLAY EQUAL 10 OR RADAR_DISPLAY EQUAL 11 OR RADAR_DISPLAY EQUAL 13 OR RADAR_DISPLAY EQUAL 14 OR RADAR_DISPLAY EQUAL 15)
     set(SDKCONFIG_DEFAULTS "${_gen}/sdkconfig.defaults;${_gen}/sdkconfig.defaults.s3lcd;${_gen}/sdkconfig.defaults.s3rgb")
 else()
     set(SDKCONFIG_DEFAULTS "${_gen}/sdkconfig.defaults")

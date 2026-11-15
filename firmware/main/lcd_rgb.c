@@ -75,6 +75,10 @@ static void panel_up(void)
             .vsync_back_porch = LCD_RGB_V_BACK,
             .vsync_front_porch = LCD_RGB_V_FRONT,
             .flags.pclk_active_neg = 1,
+#ifdef LCD_RGB_SYNC_IDLE_LOW
+            .flags.hsync_idle_low = 1,
+            .flags.vsync_idle_low = 1,
+#endif
         },
         .data_width = 16,
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
