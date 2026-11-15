@@ -19,7 +19,6 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
-#include "i2c_bus.h"
 
 static const char *TAG = "lcd";
 
@@ -126,6 +125,7 @@ static void panel_up(void)
 /* --- the backlight and the touch's reset --- */
 
 #if LCD_BOARD_CHIP
+#include "esp_rom_sys.h"
 #include "soc/soc_caps.h"
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
 #include "soc/usb_serial_jtag_struct.h"
@@ -142,20 +142,82 @@ static void panel_up(void)
 #define GT911_ADDR    0x5D
 #define STC_HZ        100000
 
-static i2c_master_dev_handle_t s_board;
 static int s_expander;
 
-static int chip_send(uint8_t v)
+/* the chip's own I2C driver never got an answer out of this board (ESP-IDF 6). Elecrow's lessons
+ * use Arduino's Wire, which is just the two pins. the same here, open drain, about 50 kHz: slower
+ * than their 100 kHz, which this chip accepts, and slower than the 400 kHz it ignores */
+static void bb_idle(void)
 {
-    if (!s_board) return 0;
-    return i2c_master_transmit(s_board, &v, 1, 100) == ESP_OK;
+    gpio_set_level(PIN_I2C_SDA, 1);
+    gpio_set_level(PIN_I2C_SCL, 1);
 }
 
-static void expander_set(uint8_t reg, uint8_t v)
+static void bb_init(void)
 {
-    const uint8_t b[2] = { reg, v };
-    if (i2c_master_transmit(s_board, b, 2, 50) != ESP_OK) ESP_LOGW(TAG, "the expander did not take register %d", reg);
+    gpio_reset_pin(PIN_I2C_SDA);
+    gpio_reset_pin(PIN_I2C_SCL);
+    gpio_set_direction(PIN_I2C_SDA, GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_direction(PIN_I2C_SCL, GPIO_MODE_INPUT_OUTPUT_OD);
+    gpio_set_pull_mode(PIN_I2C_SDA, GPIO_PULLUP_ONLY);
+    gpio_set_pull_mode(PIN_I2C_SCL, GPIO_PULLUP_ONLY);
+    bb_idle();
+    /* nine clocks, then a stop: a chip left mid-byte from the last boot holds SDA down */
+    for (int i = 0; i < 9; i++) {
+        gpio_set_level(PIN_I2C_SCL, 0);
+        esp_rom_delay_us(10);
+        gpio_set_level(PIN_I2C_SCL, 1);
+        esp_rom_delay_us(10);
+    }
+    gpio_set_level(PIN_I2C_SDA, 0);
+    esp_rom_delay_us(10);
+    gpio_set_level(PIN_I2C_SCL, 1);
+    esp_rom_delay_us(10);
+    bb_idle();
 }
+
+static void bb_scl_high(void)
+{
+    gpio_set_level(PIN_I2C_SCL, 1);
+    for (int i = 0; i < 50 && !gpio_get_level(PIN_I2C_SCL); i++) esp_rom_delay_us(10);   // the chip may stretch
+}
+
+static int bb_byte(uint8_t v)
+{
+    for (int bit = 7; bit >= 0; bit--) {
+        gpio_set_level(PIN_I2C_SDA, (v >> bit) & 1);
+        esp_rom_delay_us(10);
+        bb_scl_high();
+        esp_rom_delay_us(10);
+        gpio_set_level(PIN_I2C_SCL, 0);
+        esp_rom_delay_us(10);
+    }
+    gpio_set_level(PIN_I2C_SDA, 1);
+    esp_rom_delay_us(10);
+    bb_scl_high();
+    int ack = gpio_get_level(PIN_I2C_SDA) == 0;
+    esp_rom_delay_us(10);
+    gpio_set_level(PIN_I2C_SCL, 0);
+    return ack;
+}
+
+static int bb_write(uint8_t addr, const uint8_t *b, int n)
+{
+    gpio_set_level(PIN_I2C_SDA, 0);                 // start: SDA falls while SCL is high
+    esp_rom_delay_us(10);
+    gpio_set_level(PIN_I2C_SCL, 0);
+    int ok = bb_byte((uint8_t)(addr << 1));
+    for (int i = 0; ok && i < n; i++) ok = bb_byte(b[i]);
+    gpio_set_level(PIN_I2C_SDA, 0);                 // stop
+    esp_rom_delay_us(10);
+    bb_scl_high();
+    esp_rom_delay_us(10);
+    bb_idle();
+    esp_rom_delay_us(10);
+    return ok;
+}
+
+static int bb_probe(uint8_t addr) { return bb_write(addr, NULL, 0); }
 
 // the touch's interrupt line low for a moment, then let go: it may not be driven high, the chip drives it too
 static void int_low(int ms)
@@ -192,43 +254,47 @@ static void board_start(void)
 {
     board_hold_low();
     vTaskDelay(pdMS_TO_TICKS(50));
-    s_expander = i2c_probe(EXPANDER_ADDR);
+    bb_init();
+    s_expander = bb_probe(EXPANDER_ADDR);
     if (s_expander) {
-        s_board = i2c_dev(EXPANDER_ADDR);
-        expander_set(1, 0x00);                         // backlight off, the touch held in reset
-        expander_set(3, 0xE1);                         // bits 1 to 4 are outputs, as in Elecrow's V1.0 demos
-        gpio_config_t out = { .pin_bit_mask = 1ULL << PIN_T_INT, .mode = GPIO_MODE_OUTPUT };
-        gpio_config(&out);
-        gpio_set_level(PIN_T_INT, 0);                  // low through its reset: the touch answers at 0x5D
-        vTaskDelay(pdMS_TO_TICKS(20));
-        expander_set(1, 0x04);
+        bb_write(EXPANDER_ADDR, (const uint8_t[]){ 1, 0x00 }, 2);   // backlight off, the touch held in reset
+        bb_write(EXPANDER_ADDR, (const uint8_t[]){ 3, 0xE1 }, 2);   // bits 1 to 4 are outputs, as in Elecrow's V1.0 demos
+        int_low(20);
+        bb_write(EXPANDER_ADDR, (const uint8_t[]){ 1, 0x04 }, 2);
         vTaskDelay(pdMS_TO_TICKS(100));
-        gpio_config_t in = { .pin_bit_mask = 1ULL << PIN_T_INT, .mode = GPIO_MODE_INPUT };
-        gpio_config(&in);
         ESP_LOGI(TAG, "a PCA9557 at 0x%02x: board V1.0", EXPANDER_ADDR);
         return;
     }
-    s_board = i2c_dev_hz(STC_ADDR, STC_HZ);
     /* Elecrow's demos ask till both answer, for ever. here eight times, then on without: a dark
-     * board that says so in the log is better than one that hangs. a missed wake byte is normal
-     * while the chip is still coming up, so it is not a warning of its own */
+     * board that says so in the log is better than one that hangs */
     for (int tries = 0; tries < 8; tries++) {
-        int stc = i2c_probe(STC_ADDR), touch = i2c_probe(GT911_ADDR) || i2c_probe(0x14);
+        int stc = bb_probe(STC_ADDR), touch = bb_probe(GT911_ADDR) || bb_probe(0x14);
         ESP_LOGI(TAG, "the board's chip %s, the touch %s", stc ? "answers" : "is silent", touch ? "answers" : "is silent");
         if (stc && touch) return;
-        chip_send(250);                                // V1.2 and V1.3: let the touch out
-        chip_send(0x19);                               // V1.1: the same
+        bb_write(STC_ADDR, (const uint8_t[]){ 250 }, 1);    // V1.2 and V1.3: let the touch out
+        bb_write(STC_ADDR, (const uint8_t[]){ 0x19 }, 1);   // V1.1: the same
         int_low(120);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
-    if (!i2c_probe(STC_ADDR)) ESP_LOGW(TAG, "the board's chip stayed silent");
+    if (!bb_probe(STC_ADDR))
+        ESP_LOGW(TAG, "the board's chip stayed silent. its switch selects the microphone: that is the position this needs");
 }
 
 static void board_light(void)
 {
-    if (s_expander) expander_set(1, 0x06);             // out of reset, and the light
-    else if (s_board && !chip_send(0x10) && !chip_send(0x00))
-        ESP_LOGW(TAG, "the board's chip did not take 0x10");
+    static int sent;
+    if (sent) return;                              // the I2C driver owns the pins after this
+    sent = 1;
+    if (s_expander) {
+        if (!bb_write(EXPANDER_ADDR, (const uint8_t[]){ 1, 0x06 }, 2))
+            ESP_LOGW(TAG, "the expander did not take the backlight");
+        return;
+    }
+    /* V1.2 and V1.3: 0 is full brightness. V1.1: 0x10 is. 0 last, so a new board is fully lit;
+     * on a V1.1, 0x10 has already been sent and 0 is not one of its levels */
+    int on = bb_write(STC_ADDR, (const uint8_t[]){ 0x10 }, 1);
+    on = bb_write(STC_ADDR, (const uint8_t[]){ 0x00 }, 1) || on;
+    if (!on) ESP_LOGW(TAG, "the board's chip did not take the backlight");
 }
 #endif
 
@@ -272,6 +338,9 @@ void disp_init(void)
     ESP_ERROR_CHECK(ledc_channel_config(&ccfg));
 #endif
     panel_up();
+#if LCD_BOARD_CHIP
+    board_light();                                 // the frame is cleared, and the I2C driver does not own the pins yet
+#endif
     s_ready = 1;
     ESP_LOGI(TAG, "RGB bus %s, %dx%d, %d MHz, frame %s", PROFILE_NAME[s_profile], GFX_PW, GFX_PH, LCD_RGB_HZ / 1000000,
              s_fb ? "in the PSRAM" : "NOT THERE");
