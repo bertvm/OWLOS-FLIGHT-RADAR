@@ -11,10 +11,11 @@ The site keeps the firmware of each version: a new number here keeps the one bef
   for an ESP32-S3. `project()` stays in that root file, so the chip's toolchain is the one the build
   uses. ESP-IDF 6 names the panel's pixels as RGB565 instead of `bits_per_pixel`.
 - Fixed: on an Elecrow CrowPanel Advance 5.0 the backlight never came on. The board's own chip,
-  which switches it, did not answer the ESP32's I2C driver. The two I2C pins are driven directly,
-  the way Elecrow's lesson does, after the microphone clock on GPIO 19 is held low. The light is
-  turned on once the picture is in memory. If the chip is still silent, the board's switch needs to
-  be on the microphone.
+  which switches it, did not answer. WiFi's start lets every pin float while the radio naps, and
+  that includes the two I2C pins and the microphone clock on GPIO 19, so the chip's answer was
+  lost. Those pins stay driven. The clock pin is tried left alone, held low, and held high; the
+  log names which one, if any, the chip answers on. The light is turned on once the picture is in
+  memory. If the chip is still silent, the board's switch needs to be on the microphone.
 - The radar can do without its panel: the three dots in the top right corner take it away and the scope
   moves to the middle of the screen. A picked plane brings the panel back while it is picked; the dots
   take it away again, and the plane with it. Tapped once more, they bring the panel back to stay. The

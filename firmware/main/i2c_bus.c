@@ -1,5 +1,6 @@
 #include "i2c_bus.h"
 #ifdef PIN_I2C_SDA
+#include "driver/gpio.h"
 #include "esp_err.h"
 
 static i2c_master_bus_handle_t s_bus;
@@ -16,6 +17,11 @@ static void bus_up(void)
         .flags.enable_internal_pullup = true,
     };
     ESP_ERROR_CHECK(i2c_new_master_bus(&cfg, &s_bus));
+    /* the same nap that isolates every other pin: the bus driver has just set these two */
+    gpio_hold_dis(PIN_I2C_SDA);
+    gpio_hold_dis(PIN_I2C_SCL);
+    gpio_sleep_sel_dis(PIN_I2C_SDA);
+    gpio_sleep_sel_dis(PIN_I2C_SCL);
 }
 
 i2c_master_dev_handle_t i2c_dev_hz(uint8_t addr, uint32_t hz)

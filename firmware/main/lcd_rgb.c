@@ -10,6 +10,7 @@
 #include "display.h"
 #if DISP_LCD_RGB
 
+#include <stdio.h>
 #include <string.h>
 #include "driver/gpio.h"
 #include "driver/ledc.h"
@@ -146,7 +147,15 @@ static int s_expander;
 
 /* the chip's own I2C driver never got an answer out of this board (ESP-IDF 6). Elecrow's lessons
  * use Arduino's Wire, which is just the two pins. the same here, open drain, about 50 kHz: slower
- * than their 100 kHz, which this chip accepts, and slower than the 400 kHz it ignores */
+ * than their 100 kHz, which this chip accepts, and slower than the 400 kHz it ignores.
+ * WiFi's start marks every pin to be let go of while the radio naps. these two are RTC pins, and
+ * a nap then leaves them floating, so a chip's answer reads as silence. they stay driven */
+static void pin_awake(gpio_num_t pin)
+{
+    gpio_hold_dis(pin);
+    gpio_sleep_sel_dis(pin);
+}
+
 static void bb_idle(void)
 {
     gpio_set_level(PIN_I2C_SDA, 1);
@@ -157,6 +166,8 @@ static void bb_init(void)
 {
     gpio_reset_pin(PIN_I2C_SDA);
     gpio_reset_pin(PIN_I2C_SCL);
+    pin_awake(PIN_I2C_SDA);
+    pin_awake(PIN_I2C_SCL);
     gpio_set_direction(PIN_I2C_SDA, GPIO_MODE_INPUT_OUTPUT_OD);
     gpio_set_direction(PIN_I2C_SCL, GPIO_MODE_INPUT_OUTPUT_OD);
     gpio_set_pull_mode(PIN_I2C_SDA, GPIO_PULLUP_ONLY);
@@ -195,6 +206,7 @@ static int bb_byte(uint8_t v)
     gpio_set_level(PIN_I2C_SDA, 1);
     esp_rom_delay_us(10);
     bb_scl_high();
+    esp_rom_delay_us(5);                            // the chip pulls SDA after the clock rises
     int ack = gpio_get_level(PIN_I2C_SDA) == 0;
     esp_rom_delay_us(10);
     gpio_set_level(PIN_I2C_SCL, 0);
@@ -219,6 +231,25 @@ static int bb_write(uint8_t addr, const uint8_t *b, int n)
 
 static int bb_probe(uint8_t addr) { return bb_write(addr, NULL, 0); }
 
+/* one pass over the bus, for the log: who, if anyone, is actually there */
+static void bb_log_bus(const char *when)
+{
+    char hits[80];
+    int n = 0;
+    hits[0] = '\0';
+    for (int a = 0x08; a < 0x78; a++) {
+        if (!bb_probe((uint8_t)a)) continue;
+        int room = (int)sizeof hits - n;
+        if (room < 6) break;
+        n += snprintf(hits + n, (size_t)room, "%s0x%02x", n ? " " : "", a);
+    }
+    if (n)
+        ESP_LOGI(TAG, "%s: i2c answers %s", when, hits);
+    else
+        ESP_LOGW(TAG, "%s: i2c empty, SDA %d, SCL %d, clock pin %d", when,
+                 gpio_get_level(PIN_I2C_SDA), gpio_get_level(PIN_I2C_SCL), gpio_get_level(PIN_BOARD_HOLD));
+}
+
 // the touch's interrupt line low for a moment, then let go: it may not be driven high, the chip drives it too
 static void int_low(int ms)
 {
@@ -226,6 +257,7 @@ static void int_low(int ms)
     static int ready;
     if (!ready) {
         gpio_reset_pin(PIN_T_INT);
+        pin_awake(PIN_T_INT);
         ready = 1;
     }
     gpio_set_direction(PIN_T_INT, GPIO_MODE_OUTPUT);
@@ -234,28 +266,66 @@ static void int_low(int ms)
     gpio_set_direction(PIN_T_INT, GPIO_MODE_INPUT);
 }
 
-static void board_hold_low(void)
+/* GPIO 19 is the microphone clock, and also the S3's USB D-. the ROM leaves the USB pad on, so a
+ * write never reaches the clock until that pad is off. held so a nap cannot let the clock float.
+ * high is only a try: Elecrow's lessons leave the pin an output, which sits low */
+static void clock_usb_off(void)
 {
-#ifdef PIN_BOARD_HOLD
-    /* Elecrow's V1.2 and V1.3 lessons do pinMode(19, OUTPUT) before Wire.begin. that pin is the
-     * microphone clock. left high, the STC and the GT911 never ack. it is also the S3's USB D-.
-     * the ROM leaves that pad on, and a GPIO write then never reaches the clock: the log still
-     * says the chip did not take 0x10. the serial monitor is UART0. no microphone here */
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
     USB_SERIAL_JTAG.conf0.usb_pad_enable = 0;
 #endif
+    pin_awake(PIN_BOARD_HOLD);
     gpio_reset_pin(PIN_BOARD_HOLD);
+    pin_awake(PIN_BOARD_HOLD);
+}
+
+static void clock_release(void)
+{
+    clock_usb_off();
+    gpio_set_direction(PIN_BOARD_HOLD, GPIO_MODE_INPUT);
+    gpio_set_pull_mode(PIN_BOARD_HOLD, GPIO_PULLUP_ONLY);
+}
+
+static void clock_drive(int high)
+{
+    clock_usb_off();
     gpio_set_direction(PIN_BOARD_HOLD, GPIO_MODE_OUTPUT);
-    gpio_set_level(PIN_BOARD_HOLD, 0);
-#endif
+    gpio_set_level(PIN_BOARD_HOLD, high ? 1 : 0);
+    gpio_hold_en(PIN_BOARD_HOLD);
+}
+
+static int board_here(void)
+{
+    s_expander = bb_probe(EXPANDER_ADDR);
+    return s_expander || bb_probe(STC_ADDR);
 }
 
 static void board_start(void)
 {
-    board_hold_low();
-    vTaskDelay(pdMS_TO_TICKS(50));
     bb_init();
-    s_expander = bb_probe(EXPANDER_ADDR);
+    /* holding the clock low from the first instruction never got an answer. try the pin left
+     * alone, then low, then high, and keep the one the chip answers on */
+    clock_release();
+    vTaskDelay(pdMS_TO_TICKS(30));
+    int here = board_here();
+    if (!here) {
+        bb_log_bus("clock pin left alone");
+        clock_drive(0);
+        vTaskDelay(pdMS_TO_TICKS(30));
+        here = board_here();
+    }
+    if (!here) {
+        bb_log_bus("clock pin held low");
+        clock_drive(1);
+        vTaskDelay(pdMS_TO_TICKS(30));
+        here = board_here();
+        if (!here) {
+            bb_log_bus("clock pin held high");
+            clock_drive(0);
+        }
+    }
+    if (here)
+        ESP_LOGI(TAG, "the board's chip answers, clock pin reads %d", gpio_get_level(PIN_BOARD_HOLD));
     if (s_expander) {
         bb_write(EXPANDER_ADDR, (const uint8_t[]){ 1, 0x00 }, 2);   // backlight off, the touch held in reset
         bb_write(EXPANDER_ADDR, (const uint8_t[]){ 3, 0xE1 }, 2);   // bits 1 to 4 are outputs, as in Elecrow's V1.0 demos
