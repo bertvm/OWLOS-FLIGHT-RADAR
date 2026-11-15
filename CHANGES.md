@@ -11,8 +11,9 @@ The site keeps the firmware of each version: a new number here keeps the one bef
   for an ESP32-S3. `project()` stays in that root file, so the chip's toolchain is the one the build
   uses. ESP-IDF 6 names the panel's pixels as RGB565 instead of `bits_per_pixel`.
 - Fixed: on an Elecrow CrowPanel Advance 5.0 the board's own chip stayed silent, so the backlight
-  never came on. The log said the chip did not take 0x10. The microphone clock is held low first, the
-  way Elecrow's own lessons do, and that chip is talked to at 100 kHz. At 400 kHz it takes nothing.
+  never came on. The log said the chip did not take 0x10. The microphone clock is GPIO 19, which the
+  ROM also keeps as USB D-. That pad is turned off first, then the clock is held low, and the chip
+  is talked to at 100 kHz. At 400 kHz it takes nothing.
 - The radar can do without its panel: the three dots in the top right corner take it away and the scope
   moves to the middle of the screen. A picked plane brings the panel back while it is picked; the dots
   take it away again, and the plane with it. Tapped once more, they bring the panel back to stay. The

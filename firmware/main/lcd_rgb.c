@@ -126,6 +126,10 @@ static void panel_up(void)
 /* --- the backlight and the touch's reset --- */
 
 #if LCD_BOARD_CHIP
+#include "soc/soc_caps.h"
+#if SOC_USB_SERIAL_JTAG_SUPPORTED
+#include "soc/usb_serial_jtag_struct.h"
+#endif
 /* the CrowPanel Advance 5.0 keeps them off the S3's pins, each version of it its own way (printed
  * on the board). V1.0: a PCA9557 at 0x18, bit 1 the backlight, bit 2 the touch's reset. from V1.1:
  * an STC8H1K28 at 0x30 that takes a byte: V1.1 0x05 off to 0x10 brightest, 0x19 wakes the touch;
@@ -156,22 +160,30 @@ static void expander_set(uint8_t reg, uint8_t v)
 // the touch's interrupt line low for a moment, then let go: it may not be driven high, the chip drives it too
 static void int_low(int ms)
 {
-    gpio_config_t out = { .pin_bit_mask = 1ULL << PIN_T_INT, .mode = GPIO_MODE_OUTPUT };
-    gpio_config(&out);
+    /* gpio_config on a pin it already owns logs "conflict found". direction is enough the second time */
+    static int ready;
+    if (!ready) {
+        gpio_reset_pin(PIN_T_INT);
+        ready = 1;
+    }
+    gpio_set_direction(PIN_T_INT, GPIO_MODE_OUTPUT);
     gpio_set_level(PIN_T_INT, 0);
     vTaskDelay(pdMS_TO_TICKS(ms));
-    gpio_config_t in = { .pin_bit_mask = 1ULL << PIN_T_INT, .mode = GPIO_MODE_INPUT };
-    gpio_config(&in);
+    gpio_set_direction(PIN_T_INT, GPIO_MODE_INPUT);
 }
 
 static void board_hold_low(void)
 {
 #ifdef PIN_BOARD_HOLD
     /* Elecrow's V1.2 and V1.3 lessons do pinMode(19, OUTPUT) before Wire.begin. that pin is the
-     * microphone clock. left as reset left it, the STC and the GT911 never ack, so 0x19, 250 and
-     * the backlight's 0x10 all come back not taken and the glass stays dark. no microphone here */
-    gpio_config_t out = { .pin_bit_mask = 1ULL << PIN_BOARD_HOLD, .mode = GPIO_MODE_OUTPUT };
-    gpio_config(&out);
+     * microphone clock. left high, the STC and the GT911 never ack. it is also the S3's USB D-.
+     * the ROM leaves that pad on, and a GPIO write then never reaches the clock: the log still
+     * says the chip did not take 0x10. the serial monitor is UART0. no microphone here */
+#if SOC_USB_SERIAL_JTAG_SUPPORTED
+    USB_SERIAL_JTAG.conf0.usb_pad_enable = 0;
+#endif
+    gpio_reset_pin(PIN_BOARD_HOLD);
+    gpio_set_direction(PIN_BOARD_HOLD, GPIO_MODE_OUTPUT);
     gpio_set_level(PIN_BOARD_HOLD, 0);
 #endif
 }
