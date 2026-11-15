@@ -7,9 +7,9 @@ The site keeps the firmware of each version: a new number here keeps the one bef
 ## 0.13
 
 - The ESP-IDF extension can build the folder you opened. It was looking for `CMakeLists.txt` in the
-  repo root and the file was only in `firmware/`. Opening the repo and setting the target to esp32s3
-  builds the CrowPanel Advance 5.0. `project()` stays in that root file, so the ESP32-S3 toolchain is
-  the one the build uses.
+  repo root and the file was only in `firmware/`. Opening the repo builds the CrowPanel Advance 5.0
+  for an ESP32-S3. `project()` stays in that root file, so the chip's toolchain is the one the build
+  uses. ESP-IDF 6 names the panel's pixels as RGB565 instead of `bits_per_pixel`.
 - Fixed: on an Elecrow CrowPanel Advance 5.0 the board's own chip stayed silent, so the backlight
   never came on. The log said the chip did not take 0x10. The microphone clock is held low first, the
   way Elecrow's own lessons do, and that chip is talked to at 100 kHz. At 400 kHz it takes nothing.

@@ -10,6 +10,22 @@ if(NOT DEFINED RADAR_DISPLAY)
     set(RADAR_DISPLAY 10)
 endif()
 
+# Build, with no chip chosen, would pick an ESP32. the 5" is an S3. a target passed in
+# (the extension's Set Target, or -DIDF_TARGET) wins over this
+if(NOT DEFINED IDF_TARGET AND NOT DEFINED ENV{IDF_TARGET})
+    if(RADAR_DISPLAY EQUAL 4)
+        set(IDF_TARGET esp32c3)
+    elseif(RADAR_DISPLAY EQUAL 8)
+        set(IDF_TARGET esp32c5)
+    elseif(RADAR_DISPLAY EQUAL 12)
+        set(IDF_TARGET esp32p4)
+    elseif(RADAR_DISPLAY EQUAL 1 OR RADAR_DISPLAY EQUAL 2 OR RADAR_DISPLAY EQUAL 3)
+        set(IDF_TARGET esp32)
+    else()
+        set(IDF_TARGET esp32s3)
+    endif()
+endif()
+
 set(_fw "${CMAKE_CURRENT_LIST_DIR}/firmware")
 set(EXTRA_COMPONENT_DIRS "${_fw}/main" "${CMAKE_CURRENT_LIST_DIR}/core")
 

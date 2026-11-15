@@ -13,6 +13,7 @@
 #include <string.h>
 #include "driver/gpio.h"
 #include "driver/ledc.h"
+#include "esp_idf_version.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_rgb.h"
 #include "esp_log.h"
@@ -76,7 +77,13 @@ static void panel_up(void)
             .flags.pclk_active_neg = 1,
         },
         .data_width = 16,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(6, 0, 0)
+        /* 6.0 names the pixel format. 5.5 still has bits_per_pixel. both are 16-bit RGB565 */
+        .in_color_format = LCD_COLOR_FMT_RGB565,
+        .out_color_format = LCD_COLOR_FMT_RGB565,
+#else
         .bits_per_pixel = 16,
+#endif
         .num_fbs = 1,
         .bounce_buffer_size_px = GFX_PW * BOUNCE_ROWS,
         .dma_burst_size = 64,
