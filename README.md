@@ -299,6 +299,9 @@ it, the run before is the one that stood still.
 The firmware is ESP-IDF 5.5. The screen code in `core/` is plain C, the same files build the firmware
 and a PC preview.
 
+- Opening this folder in the ESP-IDF extension (Cursor or VS Code) builds the Elecrow CrowPanel
+  Advance 5.0 for an ESP32-S3. Set the target to esp32s3, then build. The root `CMakeLists.txt`
+  is only that: the sources are still in `firmware/`.
 - `firmware/BUILD.BAT <screen> [COMx]` builds one screen's firmware (and flashes it to COMx). Screens:
   `ili9341` (2.8" CYD, the default), `st7796` (3.5" CYD), `gc9a01` (round), `ili9486` (RPi LCD),
   `es3c28p`, `nmcydc5`, `crowadv28`, `crowadv50`, `jc8048w550`, `tab5`, `esp4827s043`, `crow70`. Each
