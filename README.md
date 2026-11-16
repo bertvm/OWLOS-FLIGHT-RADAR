@@ -24,7 +24,7 @@ The map under them comes from OpenStreetMap.
 - Next to an airport the planes parked and taxiing there can be hidden: SET, ON GROUND.
 - A watch list of up to 8 planes: the board picks one when it comes in range, and says when one takes
   off or lands anywhere in the world.
-- The RGB LED on the back of the 2.8" and 3.5" CYD lights for what happens: an emergency squawk round
+- The RGB LED on the back of the 2.8" and 3.5" CYD, and on the front of the 3.2", lights for what happens: an emergency squawk round
   home, a watched plane coming, taking off or landing, no data. Each one on or off.
 - Without WiFi it flies a made-up demo sky and says DEMO in big letters. The WiFi and the home are set
   on the touch screen itself, or from the site over the USB cable.
@@ -37,6 +37,9 @@ The map under them comes from OpenStreetMap.
 
 - **2.8" CYD** ("cheap yellow display", ESP32-2432S028R): ESP32, 320x240, resistive touch. Sold with three
   different screens, one build fits them all (see below).
+- **3.2" CYD** (ESP32-2432S032, C, R or N): ESP32, ST7789 320x240. The capacitive board (GT911) and the
+  resistive one (XPT2046) take the same build: it uses whichever answers. New, not run on one here yet:
+  the pins come from CircuitPython's board file and the setups people run on it.
 - **3.5" CYD** (ESP32-3248S035, R or C version): ESP32, ST7796 480x320, resistive or capacitive touch. The
   second core draws half the radar.
 - LCDWIKI's ESP32-32E boards, also sold by Elegoo: the 2.8" E32R28T takes the 2.8" CYD build and the
@@ -235,7 +238,7 @@ smaller letters and its list of the nearest planes without their heights.
 
 ### The LED
 
-- The 2.8" and 3.5" CYD have an RGB LED on the back, the ES3C28P and the NM-CYD-C5 a WS2812. SET's LED
+- The 2.8" and 3.5" CYD have an RGB LED on the back, the 3.2" the same LED on the front, the ES3C28P and the NM-CYD-C5 a WS2812. SET's LED
   tab has a row for each thing that lights it, ON or OFF: **SOS** red and blinking fast, an emergency
   squawk (7500, 7600, 7700) round home; **IN RANGE** green, a watched plane comes; **TAKE-OFF** blue;
   **LANDING** cyan; **ANY NEAR** white, any plane in the air within **HOW NEAR** of home (1, 2, 5 or 10 km,
@@ -270,8 +273,8 @@ smaller letters and its list of the nearest planes without their heights.
   Wrong colours or a mirrored picture: press **BOOT** in the first seconds after power on. It goes v2,
   v1 (micro USB), v3 (ST7789) and keeps the one you stop at.
 - The ES3C28P has the same three and starts as v2 too. The NM-CYD-C5 has two: RGB first, then BGR, for
-  red and blue swapped. The CrowPanel Advance has the same two, BGR first. The 5" boards have them too,
-  RGB first.
+  red and blue swapped. The 3.2" CYD has those two as well, RGB first. The CrowPanel Advance has the
+  same two, BGR first. The 5" boards have them too, RGB first.
 
 ### The round glass
 
@@ -296,8 +299,8 @@ it, the run before is the one that stood still.
 
 ## Build it yourself
 
-The firmware is ESP-IDF 5.5. The screen code in `core/` is plain C, the same files build the firmware
-and a PC preview.
+The firmware is ESP-IDF 5.5, and the same sources build with 6.1. The screen code in `core/` is plain C,
+the same files build the firmware and a PC preview.
 
 - Opening this folder in the ESP-IDF extension (Cursor or VS Code) builds the plain Elecrow
   CrowPanel 5.0 (DIS07050H) for an ESP32-S3. Set the target to esp32s3, then build. The sources
@@ -306,10 +309,14 @@ and a PC preview.
   check needs that too: an existing `sdkconfig` does not pick up the new line, and the log stays
   `No matching trusted root certificate found`. The Advance 5.0 is
   `firmware/BUILD.BAT crowadv50`.
-- `firmware/BUILD.BAT <screen> [COMx]` builds one screen's firmware (and flashes it to COMx). Screens:
-  `ili9341` (2.8" CYD, the default), `st7796` (3.5" CYD), `gc9a01` (round), `ili9486` (RPi LCD),
-  `es3c28p`, `nmcydc5`, `crowadv28`, `crowadv50`, `crow50`, `jc8048w550`, `tab5`, `esp4827s043`, `crow70`. Each
-  screen has its own build folder and sdkconfig.
+- `firmware/BUILD.BAT <screen> [COMx]` on Windows, or `firmware/build.sh <screen> [port]` on a Mac or
+  Linux, builds one screen's firmware (and flashes it to that port). With ESP-IDF 6.1.0 already
+  exported, the 3.2" CYD is `cd firmware && ./build.sh s2432s032`. In the ESP-IDF extension, set the
+  target to esp32 and pass `-DRADAR_DISPLAY=16`; if this folder was last built for another screen,
+  delete `build` and `sdkconfig` first. Screens: `ili9341` (2.8" CYD, the default), `st7796` (3.5" CYD),
+  `gc9a01` (round), `ili9486` (RPi LCD), `es3c28p`, `nmcydc5`, `crowadv28`, `crowadv50`, `crow50`,
+  `jc8048w550`, `tab5`, `esp4827s043`, `crow70`, `s2432s032` (3.2" CYD, ESP32-2432S032). Each screen has
+  its own build folder and sdkconfig.
 - `.github/workflows/pages.yml` builds them all in Espressif's ESP-IDF image and publishes the site
   with them on GitHub Pages, on every push to main.
 - The version is the first `## ` line of `CHANGES.md`: the firmware is built with it, and the site

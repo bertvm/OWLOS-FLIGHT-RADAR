@@ -21,6 +21,7 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 const BOARDS = {
   ili9341: { name: '2.8" CYD', spec: 'ESP32, 320x240, resistive touch', chip: 'esp32', w: 320, h: 240, inch: 2.8, touch: 'resistive', twin: 'Twin1', shot: '02-live.png', yellow: true, screens: 'three' },
+  s2432s032: { name: '3.2" CYD', spec: 'ESP32-2432S032, 320x240, resistive or capacitive touch', chip: 'esp32', w: 320, h: 240, inch: 3.2, touch: 'resistive or capacitive', twin: 'Twin1', shot: '02-live.png', yellow: true, screens: 'two' },
   st7796: { name: '3.5" CYD', spec: 'ESP32, 480x320, touch', chip: 'esp32', w: 480, h: 320, inch: 3.5, touch: 'resistive or capacitive', twin: 'Twin2', shot: 'st7796/02-live.png', yellow: true },
   ili9486: { name: '3.5" RPi LCD', spec: 'on OWLOSAirQuality, no touch', chip: 'esp32', w: 480, h: 320, inch: 3.5, touch: 'none', twin: 'Twin2', shot: 'ili9486/03-picked-heavy.png' },
   gc9a01: { name: '1.28" round', spec: 'Elecrow CrowPanel, ESP32-C3', chip: 'c3', w: 240, h: 240, inch: 1.28, touch: 'capacitive', round: true, twin: 'Twin4', shot: 'gc9a01/03-picked-heavy.png' },

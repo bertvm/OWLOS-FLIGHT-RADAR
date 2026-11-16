@@ -4,6 +4,14 @@ What changed in each version of OWLOS Flight Radar, the newest first. The first 
 version: the firmware is built with it, the site publishes it, and a board compares its own with it.
 The site keeps the firmware of each version: a new number here keeps the one before it as it was.
 
+## 0.14
+
+- The 3.2" CYD, ESP32-2432S032: ESP32, ST7789 320x240, the 2.8"'s pages. The C version's capacitive
+  touch (GT911) and the R version's resistive touch (XPT2046) are one build: it uses whichever
+  answers. Not run on one here yet. Red and blue swapped: BOOT in the first seconds, RGB first.
+  The RGB LED on the front takes SET's LED tab. Built with ESP-IDF 6.1 as well as 5.5:
+  `firmware/build.sh s2432s032`.
+
 ## 0.13
 
 - The ESP-IDF extension can build the folder you opened. It was looking for `CMakeLists.txt` in the

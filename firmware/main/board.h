@@ -80,6 +80,49 @@
 #define PIN_I2C_SDA   33
 #define PIN_I2C_SCL   32
 
+#elif RADAR_DISPLAY == DISPLAY_2432S032_320x240
+/* ESP32-2432S032, the 3.2" CYD: ESP32-WROOM-32, 4 MB flash, ST7789 240x320 IPS. sold as C
+ * (GT911), R (XPT2046) and N (no touch). one build: touch.c asks for the GT911 first and, when
+ * nobody answers, reads the XPT2046. NOT run on one here.
+ * pins: CircuitPython's sunton_esp32_2432S032C (display, GT911, RGB LED, speaker, SD) and the
+ * same display pins plus the XPT2046's in the boards people have running (TFT_eSPI setups, the
+ * resistive pin map that matches the 2.8" CYD's touch). backlight is 27, not the 2.8"'s 21 */
+#define DISP_LCD_SPI   1
+#define LCD_CHIP_ST7789 1
+#define PIN_LCD_SCLK  14
+#define PIN_LCD_MOSI  13
+#define PIN_LCD_MISO  (-1)      // the panel's MISO is GPIO 12, a strapping pin: left alone, write only
+#define PIN_LCD_DC     2
+#define PIN_LCD_CS    15
+#define PIN_LCD_RST   (-1)      // tied to the chip's reset, so software reset only
+#define PIN_LCD_BL    27        // high = lit
+#define PIN_SPK       26        // the amplifier: held low, or it hisses (CircuitPython does the same)
+#define PIN_SD_CS      5        // the SD slot is on its own SPI (18 23 19). CS held up, a card stays quiet
+#define LCD_SPI_HZ    (40 * 1000 * 1000)   // 80 MHz APB / 2. a board on the bench took 40
+#define LCD_MADCTL    0xA0      // MY|MV, RGB: CircuitPython's landscape for this panel
+#define DISP_STRIP    24
+/* IPS: inversion on, as that start-up and the TFT_eSPI setups have it. RGB first; BGR is the
+ * other profile, BOOT in the first seconds switches (lcd_spi.c) */
+#define LCD_INVERT     1
+#define LCD_PROFILES   2
+#define LCD_ORDER      { 0, 1 }
+/* C: GT911, SDA 33 SCL 32, reset 25, INT 21. the reset pulse with INT low picks address 0x5D.
+ * R: those 25/32/33 pins are the XPT2046's clock, MOSI and CS instead, its MISO 39 and IRQ 36,
+ * the same wiring as the 2.8". touch.c gives the I2C pins back when no GT911 answers */
+#define TOUCH_GT911_TOO 1
+#define PIN_I2C_SDA   33
+#define PIN_I2C_SCL   32
+#define PIN_T_RST     25
+#define PIN_T_INT     21
+#define TOUCH_XPT_BITBANG 1
+#define PIN_T_CLK     25
+#define PIN_T_MOSI    32
+#define PIN_T_MISO    39
+#define PIN_T_CS      33
+#define PIN_T_IRQ     36
+#define PIN_BUTTON     0        // BOOT
+/* RGB LED on the front, the 2.8"'s pins, each colour pulled to ground = lit (board.h, below) */
+
 #elif RADAR_DISPLAY == DISPLAY_ILI9486_480x320
 /* Waveshare RPi LCD (A) 3.5" on the OWLOSAirQuality board, ViewOwl's ILI9486 build.
  * NOT run on hardware yet. no touch wired that ViewOwl knows of, BOOT button only */

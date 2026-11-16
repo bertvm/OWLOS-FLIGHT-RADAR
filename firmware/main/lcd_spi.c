@@ -421,10 +421,16 @@ void disp_init(void)
     expander_power_on();
 #endif
 #ifdef PIN_SD_CS
-    // an SD slot on the screen's bus: its chip select up for good, or a card in it answers too
+    // an SD slot, on the screen's bus or its own: its chip select up for good, or a card in it answers too
     gpio_config_t sd = { .pin_bit_mask = 1ULL << PIN_SD_CS, .mode = GPIO_MODE_OUTPUT };
     gpio_config(&sd);
     gpio_set_level(PIN_SD_CS, 1);
+#endif
+#ifdef PIN_SPK
+    // the speaker's amplifier: held low so it stays quiet. audio is not driven
+    gpio_config_t spk = { .pin_bit_mask = 1ULL << PIN_SPK, .mode = GPIO_MODE_OUTPUT };
+    gpio_config(&spk);
+    gpio_set_level(PIN_SPK, 0);
 #endif
 
     const size_t strip_bytes = GFX_W * DISP_STRIP * sizeof(uint16_t);

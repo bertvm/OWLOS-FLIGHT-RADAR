@@ -192,6 +192,21 @@
       </div>
     </article>
     <article class="card">
+      <img src="shots/02-live.png" alt="the radar on the 3.2 inch board" loading="lazy">
+      <div class="body">
+        <h3>3.2" CYD</h3>
+        <div class="spec">ESP32-2432S032, ST7789 320x240. The C version's capacitive touch and the R version's
+          resistive touch are the same build: it uses whichever answers. New: not run on one here yet.
+          Red and blue swapped: press BOOT in the first seconds.</div>
+        <a class="boot-tag" href="#boot">RED AND BLUE SWAPPED? PRESS BOOT</a>
+        <esp-web-install-button class="flash" manifest="fw/s2432s032/manifest.json">
+          <button slot="activate">CONNECT &amp; FLASH</button>
+          <span slot="unsupported" class="nope">This browser can't flash. Use Chrome or Edge on a computer or a Chromebook.</span>
+          <span slot="not-allowed" class="nope">Flashing needs the page over https.</span>
+        </esp-web-install-button>
+      </div>
+    </article>
+    <article class="card">
       <img src="shots/02-live.png" alt="the radar on a 2.8 inch board" loading="lazy">
       <div class="body">
         <h3>2.8" LCDWIKI ES3C28P</h3>

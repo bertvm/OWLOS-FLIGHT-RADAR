@@ -6,8 +6,8 @@
  *  CST816 capacitive on I2C (round board), FT6336 the same way (ES3C28P). their axes may not
  *    match the screen, that's fine, the 5 cross alignment in ui.c sorts out swaps and mirrors
  *    for every kind
- *  GT911 capacitive on I2C: the 3.5" CYD's C version, asked for before the XPT2046 of the R
- *    version, and the 5" boards, where it is the only one
+ *  GT911 capacitive on I2C: the 3.5" CYD's C version and the 3.2" CYD's, asked for before the
+ *    XPT2046 of the R version, and the 5" boards, where it is the only one
  * boards without touch get tp_read() that never presses
  */
 #include "touch.h"
@@ -111,9 +111,31 @@ static void irq_init(void)
 
 #if TOUCH_XPT_BITBANG
 #include "esp_rom_sys.h"
+#if TOUCH_GT911_TOO
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#endif
 
 void tp_init(void)
 {
+#if TOUCH_GT911_TOO
+#if defined(PIN_T_RST) && defined(PIN_T_INT)
+    /* INT low through the reset picks address 0x5D. on the resistive board these two pins are the
+     * XPT2046's clock and a header pin: a pulse, then the pins go back to that job */
+    gpio_config_t gt = { .pin_bit_mask = 1ULL << PIN_T_RST | 1ULL << PIN_T_INT, .mode = GPIO_MODE_OUTPUT };
+    gpio_config(&gt);
+    gpio_set_level(PIN_T_INT, 0);
+    gpio_set_level(PIN_T_RST, 0);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_set_level(PIN_T_RST, 1);
+    vTaskDelay(pdMS_TO_TICKS(10));
+    gpio_config_t gtin = { .pin_bit_mask = 1ULL << PIN_T_INT, .mode = GPIO_MODE_INPUT };
+    gpio_config(&gtin);
+    vTaskDelay(pdMS_TO_TICKS(60));
+#endif
+    if (gt_find()) return;
+    i2c_bus_free();                                  // nobody there: 33 and 32 are the XPT2046's again
+#endif
     gpio_config_t out = {
         .pin_bit_mask = (1ULL << PIN_T_CLK) | (1ULL << PIN_T_MOSI) | (1ULL << PIN_T_CS),
         .mode = GPIO_MODE_OUTPUT,
@@ -405,7 +427,7 @@ int tp_read(int *rx, int *ry) { (void)rx; (void)ry; return 0; }
 int tp_raw_span(void)
 {
 #if TOUCH_GT911_TOO
-    if (s_gt) return 480;                            // the GT911 counts screen pixels
+    if (s_gt) return GFX_H > GFX_W ? GFX_H : GFX_W;  // the GT911 counts screen pixels, the long way
 #endif
     return TOUCH_RAW_SPAN;
 }

@@ -22,6 +22,8 @@ for dir in "$FW"/*/; do
     tab5) name='5" M5Stack Tab5 (ESP32-P4, 1280x720 on MIPI-DSI, experimental)'; family='ESP32-P4' ;;
     esp4827s043) name='4.3" ESP32-4827S043C (ESP32-S3, 480x272, experimental)'; family='ESP32-S3' ;;
     crow70) name='7" Elecrow CrowPanel 7.0 (ESP32-S3, 800x480, experimental)'; family='ESP32-S3' ;;
+    crow50) name='5" Elecrow CrowPanel (ESP32-S3, 800x480)'; family='ESP32-S3' ;;
+    s2432s032) name='3.2" CYD (ESP32-2432S032, ST7789 320x240)'; family='ESP32' ;;
     *) echo "skipping unknown folder $disp"; continue ;;
   esac
   parts=""

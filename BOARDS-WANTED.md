@@ -233,6 +233,22 @@ on the site; none of the built ones here has been run on that board yet unless i
   alone unless the touch is silent, then the touch's reset as Elecrow does it. GPIO 0 is the panel's
   clock and BOOT: no button read.
 
+## ESP32-2432S032: built, not run on one yet
+
+- The 3.2" CYD. ESP32-WROOM-32, 4 MB flash, ST7789 240x320 IPS, backlight GPIO 27 (high = lit).
+  Sold as C (GT911), R (XPT2046) and N (no touch). One build, `s2432s032`, RADAR_DISPLAY 16: the
+  capacitive touch is asked first, and when nothing answers the resistive one is read. The N has
+  neither, so the resistive reader stays on and can invent taps. Not driven: the speaker on 26
+  (held low), the SD card (CS 5 held high, its own SPI on 18 23 19), the light sensor on 34.
+- Pins from CircuitPython's `sunton_esp32_2432S032C` (screen, GT911 on SDA 33 SCL 32 reset 25 INT 21,
+  LED red 4 green 16 blue 17) and from the resistive setups people run, the 2.8"'s touch pins
+  (clock 25, MOSI 32, MISO 39, CS 33, IRQ 36). On the R those 25/32/33 pins are the touch's SPI,
+  not the GT911's, so the I2C bus is given back before the resistive read. Landscape MADCTL 0xA0,
+  colours inverted, RGB first and BGR behind BOOT. SPI at 40 MHz. The panel's MISO is GPIO 12 and
+  is left alone: it is a strapping pin, and the screen is only written.
+- To learn from whoever tries it: C, R or N; colours right as it starts; which landscape is upright;
+  the touch, and whether a card in the SD slot stays quiet.
+
 ## Others on sale, nobody asked yet
 
 Looked up 2026-11-03 to see what else people build things like this on. Pins are in the board JSONs
@@ -241,8 +257,7 @@ check each against a second source before a build. From the easiest port to the 
 
 - Pins only, chips the firmware knows: Guition JC2432W328C (the capacitive 2.8" CYD, ESP32, ST7789 or
   ILI9341 by batch, CST816/CST820 at 0x15 on SDA 33 SCL 32, backlight 27, looks the most common now);
-  ESP32-2432S024 C/R/N (2.4", ILI9341, CST820 or XPT2046); ESP32-2432S032 C/R/N (3.2", ST7789, GT911 or
-  XPT2046); Elecrow CrowPanel 2.8 and 2.4 ESP32 HMI, the plain ones (ILI9341V, XPT2046 on the LCD
+  ESP32-2432S024 C/R/N (2.4", ILI9341, CST820 or XPT2046); Elecrow CrowPanel 2.8 and 2.4 ESP32 HMI, the plain ones (ILI9341V, XPT2046 on the LCD
   bus, CS 33); the CrowPanel Advance 2.4 (S3, Elecrow's examples are shared with the 2.8's);
   ESP32-2424S012C (round, ESP32-C3, GC9A01 and CST816, near the CrowPanel 1.28); WT32-SC01 (3.5"
   ST7796, FT6336, ESP32 with PSRAM); LilyGO T-Deck (S3, ST7789 320x240, keyboard).
