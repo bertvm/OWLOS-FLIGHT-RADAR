@@ -41,13 +41,67 @@ else
   BDIR=build_$DISP
   SDK=$PWD/build_$DISP/sdkconfig
 fi
+# a normal Terminal has no idf.py. the Espressif install and the editor both record where 6.1 lives
+idf_export() {
+  [ -f "$1/tools/idf.py" ] || return 1
+  here=$PWD
+  cd "$1" || return 1
+  set +eu
+  # shellcheck disable=SC1091
+  . ./export.sh
+  ok=$?
+  set -eu
+  cd "$here" || return 1
+  return "$ok"
+}
 if ! command -v idf.py >/dev/null 2>&1; then
-  if [ -z "${IDF_PATH:-}" ]; then
-    echo "ESP-IDF is not on PATH. From the 6.1.0 install: . \"\$IDF_PATH/export.sh\"" >&2
+  found=
+  if [ -n "${IDF_PATH:-}" ] && [ -f "$IDF_PATH/export.sh" ]; then
+    found=$IDF_PATH
+  fi
+  if [ -z "$found" ]; then
+    for f in \
+      "$HOME/Library/Application Support/Cursor/User/settings.json" \
+      "$HOME/Library/Application Support/Code/User/settings.json" \
+      "$HOME/Library/Application Support/Cursor/User/globalStorage/espressif.esp-idf-extension/esp_idf.json" \
+      "$HOME/Library/Application Support/Code/User/globalStorage/espressif.esp-idf-extension/esp_idf.json" \
+      "$HOME/.espressif/eim_idf.json"
+    do
+      [ -f "$f" ] || continue
+      hit=$(sed -n 's/.*"idfPath"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p; s/.*"idf\.espIdfPath"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$f" | head -1)
+      if [ -n "$hit" ] && [ -f "$hit/export.sh" ]; then
+        found=$hit
+        break
+      fi
+    done
+  fi
+  if [ -z "$found" ]; then
+    for d in \
+      "$HOME/esp/v6.1.0/esp-idf" \
+      "$HOME/esp/v6.1/esp-idf" \
+      "$HOME/esp/esp-idf" \
+      "$HOME/esp-idf" \
+      "$HOME/.espressif/v6.1.0/esp-idf" \
+      "$HOME/.espressif/frameworks/esp-idf-v6.1.0" \
+      "$HOME/.espressif/frameworks/esp-idf-v6.1" \
+      "$HOME"/esp/v6.1*/esp-idf \
+      "$HOME"/.espressif/frameworks/esp-idf-v6.1* \
+      "$HOME"/esp/*/esp-idf
+    do
+      if [ -f "$d/export.sh" ]; then
+        found=$d
+        break
+      fi
+    done
+  fi
+  if [ -z "$found" ]; then
+    echo "ESP-IDF 6.1 was not found. In the folder that holds export.sh, run:" >&2
+    echo "  export IDF_PATH=\"\$(pwd)\"" >&2
+    echo "and start this script again." >&2
     exit 1
   fi
-  # shellcheck disable=SC1091
-  . "$IDF_PATH/export.sh"
+  echo "ESP-IDF $found"
+  idf_export "$found"
 fi
 # a build folder made in another checkout keeps that path in its CMake cache
 if [ -f "$BDIR/CMakeCache.txt" ] && ! grep -q "CMAKE_HOME_DIRECTORY:INTERNAL=$PWD" "$BDIR/CMakeCache.txt"; then

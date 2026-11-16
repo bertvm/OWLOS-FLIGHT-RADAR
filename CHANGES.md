@@ -10,7 +10,8 @@ The site keeps the firmware of each version: a new number here keeps the one bef
   touch (GT911) and the R version's resistive touch (XPT2046) are one build: it uses whichever
   answers. Not run on one here yet. Red and blue swapped: BOOT in the first seconds, RGB first.
   The RGB LED on the front takes SET's LED tab. Built with ESP-IDF 6.1 as well as 5.5:
-  `firmware/build.sh s2432s032`.
+  `firmware/build.sh s2432s032`. Setting the chip to ESP32 builds this board. The 5" screen's
+  RGB header is not part of an ESP32 build.
 
 ## 0.13
 

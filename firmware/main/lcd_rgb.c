@@ -9,6 +9,8 @@
  */
 #include "display.h"
 #if DISP_LCD_RGB
+#include "soc/soc_caps.h"
+#if SOC_LCDCAM_RGB_LCD_SUPPORTED
 
 #include <stdio.h>
 #include <string.h>
@@ -464,4 +466,7 @@ void disp_full_next(void) { }
 uint32_t disp_lost(void) { return 0; }
 void disp_wait_idle(void) { }
 
+#else
+#error "this screen is the S3 RGB bus, and esp_lcd_panel_rgb.h is not in an ESP32 build. The 3.2 inch CYD is target esp32, which selects it. A 5 inch board needs target esp32s3."
+#endif
 #endif

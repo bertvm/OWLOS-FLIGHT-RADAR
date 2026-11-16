@@ -26,6 +26,13 @@ if(NOT DEFINED IDF_TARGET AND NOT DEFINED ENV{IDF_TARGET})
     endif()
 endif()
 
+# Opening the folder builds the 5" S3. Setting the chip to a plain ESP32, and leaving the
+# screen at that default, is the 3.2" CYD: the S3's RGB panel header is not in an ESP32 build
+# of esp_lcd, so the 5" sources do not compile there.
+if(IDF_TARGET STREQUAL "esp32" AND RADAR_DISPLAY EQUAL 15)
+    set(RADAR_DISPLAY 16)
+endif()
+
 set(_fw "${CMAKE_CURRENT_LIST_DIR}/firmware")
 set(EXTRA_COMPONENT_DIRS "${_fw}/main" "${CMAKE_CURRENT_LIST_DIR}/core")
 

@@ -303,15 +303,18 @@ The firmware is ESP-IDF 5.5, and the same sources build with 6.1. The screen cod
 the same files build the firmware and a PC preview.
 
 - Opening this folder in the ESP-IDF extension (Cursor or VS Code) builds the plain Elecrow
-  CrowPanel 5.0 (DIS07050H) for an ESP32-S3. Set the target to esp32s3, then build. The sources
+  CrowPanel 5.0 (DIS07050H) for an ESP32-S3. Set the target to esp32s3, then build. Set the target
+  to esp32 and the same build is the 3.2" CYD (ESP32-2432S032): the 5" driver includes
+  `esp_lcd_panel_rgb.h`, which an ESP32 build of ESP-IDF does not have. The sources
   are still in `firmware/`. If a configure already failed, or this folder was last built for a
   different screen, delete `build` and `sdkconfig` in this folder first. The ADSB.FI certificate
   check needs that too: an existing `sdkconfig` does not pick up the new line, and the log stays
   `No matching trusted root certificate found`. The Advance 5.0 is
   `firmware/BUILD.BAT crowadv50`.
 - `firmware/BUILD.BAT <screen> [COMx]` on Windows, or `firmware/build.sh <screen> [port]` on a Mac or
-  Linux, builds one screen's firmware (and flashes it to that port). With ESP-IDF 6.1.0 already
-  exported, the 3.2" CYD is `cd firmware && ./build.sh s2432s032`. In the ESP-IDF extension, set the
+  Linux, builds one screen's firmware (and flashes it to that port). The script finds an ESP-IDF 6.1
+  install under `~/esp` or `~/.espressif`, or the one the ESP-IDF extension recorded. The 3.2" CYD is
+  `cd firmware && ./build.sh s2432s032`. In the ESP-IDF extension, set the
   target to esp32 and pass `-DRADAR_DISPLAY=16`; if this folder was last built for another screen,
   delete `build` and `sdkconfig` first. Screens: `ili9341` (2.8" CYD, the default), `st7796` (3.5" CYD),
   `gc9a01` (round), `ili9486` (RPi LCD), `es3c28p`, `nmcydc5`, `crowadv28`, `crowadv50`, `crow50`,
